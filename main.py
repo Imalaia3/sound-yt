@@ -127,7 +127,7 @@ def run():
         if c == 0:
             OLEN[file] = MPLEN[file]
             continue
-        OLEN[file] = list(OLEN.values())[c-1] + MPLEN[file]
+        OLEN[file] = list(OLEN.values())[c-1] +list(MPLEN.values())[c-1]
 
     
     DESC = f"""
