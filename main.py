@@ -15,13 +15,16 @@ except ImportError:
 
 try:
     from sys import argv
-    from os import path,listdir,system
+    from os import path,listdir
+    from shutil import which
 except:
-    print("[FAILED] Python is, somehow, missing the sys or/and the os library!\nTry re-installing python")
+    print("[FAILED] Python is, somehow, missing the sys, shutil or the os library!\nTry re-installing python")
+    
+    exit(-1)
 
 argc = len(argv)
 
-
+ONLY_DESCRIPTION = True
 
 
 if argc > 1 and argv[1] == "--help":
@@ -40,28 +43,32 @@ Note: This program requires FFMPEG. This program must be able to be ran via the 
 """)
     exit()
 
-#TODO: Currently only works with mm:ss songs
+#TODO: Optimize
+def comm_exists(cmd):
+    return which(cmd)
 
 
 def mutagen_length(path):
     try:
-        audio = MP3(path)
-        length = audio.info.length
-        return length
+        return MP3(path).info.length
     except:
-        return None
+        pass
    
 def ffmpeg_detector():
-    print("""If you don't have ffmpeg in your (Windows) PATH
-          or it isn't installed (Linux), exit this program and visit
-          https://ffmpeg.org/ for installation instructions""")
+    if comm_exists("ffmpeg") == None:
+        print("""You don't have ffmpeg in your (Windows) PATH
+    or it isn't installed. Exit this program and visit
+    https://ffmpeg.org/ for installation instructions""")
+        exit()
+    print("FFMPEG is installed.")
 
 
 def run():
     ffmpeg_detector()
 
 
-    ST_PATH = input("Enter Soundtrack Folder PATH > ")
+    #ST_PATH = input("Enter Soundtrack Folder PATH > ")
+    ST_PATH = "/home/imalaia/.local/share/Steam/steamapps/music/The Talos Principle - Soundtrack"
     if not path.isdir(ST_PATH):
         print("This directory doesn't exist!")
         exit(-1)
@@ -90,20 +97,16 @@ def run():
 
     #Grab timestamps for every MPFILE
     MPLEN = {}
+    totalsize = 0
     for file in MPFILES:
-        #print(file)
         mins = mutagen_length(ST_PATH+"/"+file)
         MPLEN[file] = mins
+        totalsize += mins
 
     print(f"Found {len(MPLEN)} Music Files.")
-    print(f"The Album Name is: {trackName}.")
+    print(f"The Album Name is: {trackName}.\n")
+    print(f"The total size of the video will be: {totalsize} seconds.")
 
-    print("Building Audio File.")
-    AUDIO_DONE = concatenate_audioclips(list(MPFILES.values()))
-    AUDIO_DONE.write_audiofile("output.mp3")
-
-    print("Writing video.")
-    #Will try to output as mp4
 
     if not hasCover:
         print("No cover.png Detected! Enter a path of your own")
@@ -111,38 +114,67 @@ def run():
     else:
         coverpath = '"'+ST_PATH+"/"+"cover.png"+'"'
 
+    print("Building Audio File.")
 
-    #Stackexchange ffmpeg
-    system(
-        "ffmpeg -loop 1 -i {} -i {} -shortest -acodec copy -vcodec mjpeg upload.mp4".format(
-        coverpath,
-        "output.mp3"
-        ))
+    if not ONLY_DESCRIPTION:
+        AUDIO_DONE = concatenate_audioclips(list(MPFILES.values()))
+        AUDIO_DONE.write_audiofile("output.mp3")
 
-    print("Making Description.....")
+    print("Writing video.")
+
+    #Stackexchange ffmpeg Will try to output as mp4
+    if not ONLY_DESCRIPTION:
+        system(
+            "ffmpeg -loop 1 -i {} -i {} -shortest -acodec copy -vcodec libx264 upload.mp4".format(
+            coverpath,
+            "output.mp3"
+            ))
+
+    print("Making Description.")
     
     #Convert Lengths to Timestamps
     OLEN = {}
     for c,file in enumerate(MPLEN):
         if c == 0:
-            OLEN[file] = MPLEN[file]
+            print(MPLEN[file])
+            OLEN[file] = 0
+            print(OLEN)
             continue
+        
         OLEN[file] = list(OLEN.values())[c-1] +list(MPLEN.values())[c-1]
 
     
     DESC = f"""
-#{"#"*len(trackName)}#
-#{trackName}#
-#{"#"*len(trackName)}#\n\n\n\n
+##{"#"*len(trackName)}##
+# {trackName} #
+##{"#"*len(trackName)}##\n\n\n\n
 Tracklist:
 """
 
     for track in OLEN:
-        stamp = str(int(OLEN[track]/60)) + ':'
-        if  int(OLEN[track]%60) < 10:
-            stamp += "0" + str(int(OLEN[track]%60))
-        else:
-            stamp+= str(int(OLEN[track]%60))
+        if totalsize > 3600: #1 h
+            if OLEN[track] < 3600:
+                #zero padding
+                stamp = "00:"+str(int(OLEN[track]/60)).zfill(2) + ':' + str(int(OLEN[track]%60)).zfill(2)
+                
+                
+            else:
+                #Convert secs to h mins and secs
+                h = OLEN[track]/3600
+                minutes = OLEN[track]%3600/60 
+                secs = OLEN[track]%60
+                stamp = str(int(h))+":"+str(int(minutes)).zfill(2) + ':' + str(int(secs)).zfill(2)
+
+
+
+            DESC += f"{track} - {stamp}\n"
+            continue
+                
+
+
+
+        stamp = str(int(OLEN[track]/60)).zfill(2) + ':' + str(int(OLEN[track]%60)).zfill(2)
+        
         DESC += f"{track} - {stamp}\n"
 
 
@@ -158,7 +190,7 @@ Tracklist:
 
 
     input("Press enter to get your description")
-    print("======================================")
+    print("======================================\n")
 
     print(DESC)
 
