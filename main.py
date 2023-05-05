@@ -67,8 +67,8 @@ def run():
     ffmpeg_detector()
 
 
-    #ST_PATH = input("Enter Soundtrack Folder PATH > ")
-    ST_PATH = "/home/imalaia/.local/share/Steam/steamapps/music/The Talos Principle - Soundtrack"
+    ST_PATH = input("Enter Soundtrack Folder PATH > ")
+
     if not path.isdir(ST_PATH):
         print("This directory doesn't exist!")
         exit(-1)
