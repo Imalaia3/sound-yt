@@ -24,7 +24,7 @@ except:
 
 argc = len(argv)
 
-ONLY_DESCRIPTION = True
+ONLY_DESCRIPTION = False #Enable for debugging or description regeneration
 
 
 if argc > 1 and argv[1] == "--help":
